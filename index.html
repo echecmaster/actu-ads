@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>L'Actu du Jour - Temps Réel</title>
+    
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5751860951786530"
+     crossorigin="anonymous"></script>
+
     <style>
         :root {
             --primary-color: #1a252f;
@@ -34,7 +38,6 @@
             font-size: 2.5rem;
         }
 
-        /* Styles pour le compte à rebours */
         .countdown-container {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -122,7 +125,6 @@
             color: var(--primary-color);
         }
 
-        /* Style pour le texte de l'article (remplace le lien) */
         .article-text {
             font-size: 1rem;
             line-height: 1.6;
@@ -170,7 +172,6 @@
 
         let isFetching = false;
 
-        // Fonction pour nettoyer le texte (retirer les balises HTML invisibles laissées par les journaux)
         function cleanHTMLText(htmlString) {
             const tempDiv = document.createElement("div");
             tempDiv.innerHTML = htmlString;
@@ -222,7 +223,6 @@
                     day: 'numeric', month: 'long', hour: '2-digit', minute:'2-digit'
                 });
 
-                // On nettoie la description pour en faire un texte propre sans liens cachés
                 const textePropre = cleanHTMLText(article.description);
 
                 const cardHTML = `
@@ -240,43 +240,35 @@
             });
         }
 
-        // --- GESTION DU COMPTE À REBOURS ET DE L'ACTUALISATION ---
         function updateCountdown() {
             const maintenant = new Date();
             let prochainMidi = new Date();
             
-            // On cible 12h00:00 aujourd'hui
             prochainMidi.setHours(12, 0, 0, 0);
 
-            // Si midi est déjà passé, on cible demain midi
             if (maintenant.getTime() >= prochainMidi.getTime()) {
                 prochainMidi.setDate(prochainMidi.getDate() + 1);
             }
 
             const difference = prochainMidi.getTime() - maintenant.getTime();
 
-            // Si le compte à rebours atteint 0 (à une seconde près), on rafraîchit la page
             if (difference <= 1000) {
                 fetchNews();
             }
 
-            // Calcul des heures, minutes, secondes
             const heures = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
             const secondes = Math.floor((difference % (1000 * 60)) / 1000);
 
-            // Formatage avec des zéros devant (ex: 09h 05m)
             timerDisplay.innerText = 
                 `${heures.toString().padStart(2, '0')}h ` +
                 `${minutes.toString().padStart(2, '0')}m ` +
                 `${secondes.toString().padStart(2, '0')}s`;
         }
 
-        // Démarrage initial
         fetchNews();
-        // Lancement de l'horloge qui tourne toutes les secondes
         setInterval(updateCountdown, 1000);
-        updateCountdown(); // Appel immédiat pour ne pas attendre 1 seconde au chargement
+        updateCountdown();
 
     </script>
 </body>
