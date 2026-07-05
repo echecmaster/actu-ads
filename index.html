@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L'Actu du Jour - Temps Réel</title>
+    <style>
+        :root {
+            --primary-color: #1a252f;
+            --accent-color: #e74c3c;
+            --background-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: 2rem 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+
+        /* Styles pour le compte à rebours */
+        .countdown-container {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            display: inline-block;
+            padding: 1rem 2rem;
+            margin-top: 1.5rem;
+        }
+
+        .countdown-label {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #bdc3c7;
+            margin-bottom: 0.5rem;
+        }
+
+        .countdown-timer {
+            font-size: 2rem;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+            color: var(--accent-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .loader {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-top: 3rem;
+        }
+
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-bottom: 3px solid var(--accent-color);
+        }
+
+        .card-content {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .source-tag {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            align-self: flex-start;
+        }
+
+        .card h2 {
+            font-size: 1.3rem;
+            margin: 0 0 1rem 0;
+            line-height: 1.4;
+            color: var(--primary-color);
+        }
+
+        /* Style pour le texte de l'article (remplace le lien) */
+        .article-text {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 1.5rem;
+            flex-grow: 1;
+        }
+
+        .card-date {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid #ecf0f1;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>L'Édition du Jour</h1>
+        
+        <div class="countdown-container">
+            <div class="countdown-label">Prochaine édition dans :</div>
+            <div id="countdown-timer" class="countdown-timer">00h 00m 00s</div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div id="loader" class="loader">Rédaction en cours...</div>
+        <div id="news-container" class="news-grid"></div>
+    </div>
+
+    <script>
+        const rssFeeds = [
+            { name: "Le Monde", url: "https://www.lemonde.fr/rss/une.xml" },
+            { name: "Le Figaro", url: "https://www.lefigaro.fr/rss/figaro_actualites.xml" },
+            { name: "Le Parisien", url: "https://www.leparisien.fr/arc/outboundfeeds/rss/une.xml" }
+        ];
+
+        const proxyUrl = 'https://api.rss2json.com/v1/api.json?rss_url=';
+        const newsContainer = document.getElementById('news-container');
+        const loader = document.getElementById('loader');
+        const timerDisplay = document.getElementById('countdown-timer');
+
+        let isFetching = false;
+
+        // Fonction pour nettoyer le texte (retirer les balises HTML invisibles laissées par les journaux)
+        function cleanHTMLText(htmlString) {
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = htmlString;
+            return tempDiv.textContent || tempDiv.innerText || "Aucun détail supplémentaire disponible.";
+        }
+
+        async function fetchNews() {
+            if(isFetching) return;
+            isFetching = true;
+            
+            newsContainer.innerHTML = ''; 
+            loader.style.display = 'block';
+            let allArticles = [];
+
+            try {
+                const fetchPromises = rssFeeds.map(feed => 
+                    fetch(proxyUrl + encodeURIComponent(feed.url))
+                        .then(response => response.json())
+                        .then(data => {
+                            if(data.status === 'ok') {
+                                return data.items.map(item => ({...item, sourceName: feed.name}));
+                            }
+                            return [];
+                        })
+                );
+
+                const results = await Promise.all(fetchPromises);
+                results.forEach(articles => allArticles.push(...articles));
+
+                allArticles.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+                allArticles = allArticles.slice(0, 30);
+
+                renderNews(allArticles);
+            } catch (error) {
+                console.error("Erreur:", error);
+                loader.innerText = "Erreur de chargement des informations.";
+            } finally {
+                isFetching = false;
+            }
+        }
+
+        function renderNews(articles) {
+            loader.style.display = 'none';
+            
+            articles.forEach(article => {
+                const imageUrl = article.thumbnail || article.enclosure?.link || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800&q=80';
+                
+                const dateFormatee = new Date(article.pubDate).toLocaleString('fr-FR', {
+                    day: 'numeric', month: 'long', hour: '2-digit', minute:'2-digit'
+                });
+
+                // On nettoie la description pour en faire un texte propre sans liens cachés
+                const textePropre = cleanHTMLText(article.description);
+
+                const cardHTML = `
+                    <div class="card">
+                        <img src="${imageUrl}" alt="Illustration" loading="lazy">
+                        <div class="card-content">
+                            <span class="source-tag">${article.sourceName}</span>
+                            <h2>${article.title}</h2>
+                            <div class="article-text">${textePropre}</div>
+                            <div class="card-date">Publié le ${dateFormatee}</div>
+                        </div>
+                    </div>
+                `;
+                newsContainer.insertAdjacentHTML('beforeend', cardHTML);
+            });
+        }
+
+        // --- GESTION DU COMPTE À REBOURS ET DE L'ACTUALISATION ---
+        function updateCountdown() {
+            const maintenant = new Date();
+            let prochainMidi = new Date();
+            
+            // On cible 12h00:00 aujourd'hui
+            prochainMidi.setHours(12, 0, 0, 0);
+
+            // Si midi est déjà passé, on cible demain midi
+            if (maintenant.getTime() >= prochainMidi.getTime()) {
+                prochainMidi.setDate(prochainMidi.getDate() + 1);
+            }
+
+            const difference = prochainMidi.getTime() - maintenant.getTime();
+
+            // Si le compte à rebours atteint 0 (à une seconde près), on rafraîchit la page
+            if (difference <= 1000) {
+                fetchNews();
+            }
+
+            // Calcul des heures, minutes, secondes
+            const heures = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const secondes = Math.floor((difference % (1000 * 60)) / 1000);
+
+            // Formatage avec des zéros devant (ex: 09h 05m)
+            timerDisplay.innerText = 
+                `${heures.toString().padStart(2, '0')}h ` +
+                `${minutes.toString().padStart(2, '0')}m ` +
+                `${secondes.toString().padStart(2, '0')}s`;
+        }
+
+        // Démarrage initial
+        fetchNews();
+        // Lancement de l'horloge qui tourne toutes les secondes
+        setInterval(updateCountdown, 1000);
+        updateCountdown(); // Appel immédiat pour ne pas attendre 1 seconde au chargement
+
+    </script>
+</body>
+</html>
